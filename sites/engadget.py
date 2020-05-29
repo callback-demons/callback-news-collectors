@@ -1,44 +1,34 @@
-import json
 from html2text import html2text
 import requests
-from xml.etree.ElementTree import fromstring
-from xmljson import badgerfish as bf
-
-URL = 'https://www.engadget.com/rss.xml'
-JSON_FILE = 'json/engadget.json'
+from bs4 import BeautifulSoup
 
 
-def get_json_from_rss():
-    try:
-        response = requests.get(URL)
-        xml_data = fromstring(response.text)
-        return json.dumps(bf.data(xml_data))
-    except e:
-        print('Error ', e)
+def extract(url):
+    print('Engadget extract {}'.format(url))
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html5lib')
+    article = soup.find('article', {'class': 'c-gray-1'})
 
+    content_blocks = article.findAll('div', {'class': 'article-text'})
+    contents = list()
+    for element in content_blocks:
+        p_tag = element.findAll('p')
+        for item in p_tag:
+            contents.append(item)
 
-def add_structure(item):
-    if 'description' in item:
-        description_md = html2text(item['description']['$'])
-        item['description_md'] = {'$': description_md}
+    contents_blocks = ''.join(element.decode() for element in contents)
+    content = html2text(contents_blocks) + '\n\n*[Extracted from engadget](' + url + ' "source")*'
+
+    tag = article.find('div')
+    if tag.has_attr('id') and tag.attrs['id'] == 'page_body':
+        description = contents[0].get_text()
+        image = soup.find('img', {'class': 'stretch-img'})['src']
     else:
-        print(item)
-    return item
+        description = article.find('div', {'class': 'mt-15'}).get_text()
+        image = article.find('img', {'class': 'stretch-img'})['src']
 
-
-def transform(json_data):
-    data = json.loads(json_data)
-    news = list(data['rss']['channel']['item'])
-    return json.dumps(list(map(add_structure, news)))
-
-
-def create_file(data):
-    file = open(JSON_FILE, "w")
-    file.write(data)
-    file.close()
-
-
-if __name__ == "__main__":
-    data = get_json_from_rss()
-    json_data = transform(data)
-    create_file(json_data)
+    return {
+        'image': image,
+        'content': content,
+        'description': description
+    }

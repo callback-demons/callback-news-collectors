@@ -1,44 +1,24 @@
-import json
 from html2text import html2text
 import requests
-from xml.etree.ElementTree import fromstring
-from xmljson import badgerfish as bf
-
-URL = 'http://feeds.feedburner.com/TechCrunch/'
-JSON_FILE = 'json/techcrunch.json'
+from bs4 import BeautifulSoup
 
 
-def get_json_from_rss():
-    try:
-        response = requests.get(URL)
-        xml_data = fromstring(response.text)
-        return json.dumps(bf.data(xml_data))
-    except e:
-        print('Error ', e)
-
-
-def add_structure(item):
-    if 'description' in item:
-        description_md = html2text(item['description']['$'])
-        item['description_md'] = {'$': description_md}
+def extract(url):
+    print('TechCrunch extract {}'.format(url))
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html5lib')
+    article = soup.find('div', {'class': 'article-content'})
+    image_tag = soup.find('img', {'class': 'article__featured-image'})
+    if image_tag is None:
+        image = soup.find('img')['src']
     else:
-        print(item)
-    return item
+        image = image_tag['src']
 
+    description = " ".join(article.get_text().strip().replace('\n', ' ').split())[0:150]
+    content = html2text(article.decode()) + '\n\n*[Extracted from TechCrunch](' + url + ' "source")*'
 
-def transform(json_data):
-    data = json.loads(json_data)
-    news = list(data['rss']['channel']['item'])
-    return json.dumps(list(map(add_structure, news)))
-
-
-def create_file(data):
-    file = open(JSON_FILE, "w")
-    file.write(data)
-    file.close()
-
-
-if __name__ == "__main__":
-    data = get_json_from_rss()
-    json_data = transform(data)
-    create_file(json_data)
+    return {
+        'image': image,
+        'content': content,
+        'description': description
+    }

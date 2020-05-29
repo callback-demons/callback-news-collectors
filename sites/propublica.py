@@ -1,44 +1,42 @@
-import json
 from html2text import html2text
 import requests
-from xml.etree.ElementTree import fromstring
-from xmljson import badgerfish as bf
+from bs4 import BeautifulSoup
 
-URL = 'http://feeds.propublica.org/propublica/main'
-JSON_FILE = 'json/propublica.json'
+DEFAULT_IMAGE = 'https://storage.googleapis.com/cbn-public/default-backgroud.jpg'
 
 
-def get_json_from_rss():
-    try:
-        response = requests.get(URL)
-        xml_data = fromstring(response.text)
-        return json.dumps(bf.data(xml_data))
-    except e:
-        print('Error ', e)
+def extract(url):
+    print('ProPublica extract {}'.format(url))
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html5lib')
 
-
-def add_structure(item):
-    if 'description' in item:
-        description_md = html2text(item['description']['$'])
-        item['description_md'] = {'$': description_md}
+    image_tag = soup.find('figure', {'class': 'lead-art'})
+    if image_tag is None:
+        image = DEFAULT_IMAGE
     else:
-        print(item)
-    return item
+        image = image_tag.find('img')['src']
 
+    description_tag = soup.find('h2', {'class': 'dek'})
+    description = ''
+    if description_tag is not None:
+        description = description_tag.get_text()
+    else:
+        description_tag = soup.find('p', {'class': 'dek'})
+    if description == '' and description_tag is not None:
+        description = description_tag.get_text()
 
-def transform(json_data):
-    data = json.loads(json_data)
-    news = list(data['rss']['channel']['item'])
-    return json.dumps(list(map(add_structure, news)))
+    content = soup.find('div', {'class': 'article-body'})
+    [element.extract() for element in content.find_all('div', {'class': 'top-notes'})]
 
+    if description == '':
+        description = content.find('p').get_text()[0:150]
 
-def create_file(data):
-    file = open(JSON_FILE, "w")
-    file.write(data)
-    file.close()
+    for element in content(['script', 'style', 'aside']):
+        element.decompose()
 
-
-if __name__ == "__main__":
-    data = get_json_from_rss()
-    json_data = transform(data)
-    create_file(json_data)
+    content = html2text(content.decode()) + '\n\n*[Extracted from ProPublica](' + url + ' "source")*'
+    return {
+        'image': image,
+        'content': content,
+        'description': description
+    }
