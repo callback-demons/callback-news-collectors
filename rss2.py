@@ -37,34 +37,36 @@ def get_data(feed_url, category_id, source_name, source_id, target, token):
             )
             author = ''
 
-            if source_name == 'Xatakamx' or source_name == 'Engadget' or \
-                    source_name == 'Propublica' or source_name == 'Fayerwayer' or \
-                    source_name == 'Shareable' or source_name == 'Singularity Hub' or \
-                    source_name == 'Techcrunch' or source_name == 'TorrentFreak':
-                author = item.find('dc:creator').get_text()
-
             if source_name == 'Xatakamx':
                 source_data = extractXakataMX(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Zdnet':
-                author = item.find('media:credit').get_text()
                 source_data = extractZDNet(item.find('link').get_text())
+                author = item.find('media:credit').get_text()
             if source_name == 'Engadget':
                 source_data = extractEngadget(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Fayerwayer':
                 source_data = extractFayerWayer(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Propublica':
                 source_data = extractProPublica(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Shareable':
                 source_data = extractShareable(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Singularity Hub':
                 source_data = extractSingularityHub(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'Yahoo Finance News / Tech':
                 source_data = extractYahoo(item.find('link').get_text(), item)
                 author = source_data['author']
             if source_name == 'Techcrunch':
                 source_data = extractTechCrunch(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
             if source_name == 'TorrentFreak':
                 source_data = extractTorrentFreak(item.find('link').get_text())
+                author = item.find('dc:creator').get_text()
 
             content = source_data['content']
             image = source_data['image']
